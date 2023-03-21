@@ -28,9 +28,6 @@ struct ContentView: View {
                         .multilineTextAlignment(.center)
                     Spacer()
 
-
-
-                    
                     //NavigationLink(destination: NearbyQuestView()){
                         //HStack{
                             //Image(systemName: "mappin.circle")
