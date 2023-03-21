@@ -17,7 +17,16 @@ struct Cache: Identifiable {
 }
 
 struct NavigationScreenView: View {
+    
     @StateObject private var locationManager = LocationManager()
+    
+    @State var region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 32.772364, longitude: -117.187653),
+        span: MKCoordinateSpan(latitudeDelta: 0.001, longitudeDelta: 0.001)
+    )
+    
+    @State var showingUserLocation = false
+    
     var caches = [
         Cache(name: "USD Torero Store", coordinate: CLLocationCoordinate2D(latitude: 32.772364, longitude: -117.187653)),
         Cache(name: "Student Life Pavilion", coordinate: CLLocationCoordinate2D(latitude: 32.77244, longitude: -117.18727)),
@@ -27,9 +36,10 @@ struct NavigationScreenView: View {
     
     var body: some View {
         TabView {
+            // Map tab
             ZStack {
-                Map(coordinateRegion: $locationManager.region, annotationItems: caches) {
-                    cache in MapAnnotation(coordinate: cache.coordinate) {
+                Map(coordinateRegion: $region, showsUserLocation: showingUserLocation, annotationItems: caches) { cache in
+                    MapAnnotation(coordinate: cache.coordinate) {
                         Circle()
                             .foregroundColor(Color.green.opacity(0.4))
                             .frame(width: 100, height: 100)
@@ -39,10 +49,14 @@ struct NavigationScreenView: View {
                     Spacer()
                     HStack {
                         Spacer()
+                        // Button to show user's current location
                         Button(action: {
-                            // Code to show current location
+                            showingUserLocation = true
+                            locationManager.requestLocation()
                         }) {
                             Image(systemName: "location.circle.fill")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 32))
                                 .foregroundColor(.blue)
                                 .padding(.top, 10) // Adds 10 points of padding to the top
                                 .padding(.leading, 20) // Adds 20 points of padding to the leading (left) side
@@ -52,21 +66,31 @@ struct NavigationScreenView: View {
                         }
                     }
                 }
-                
             }
-            
-                        .tabItem {
+            .onAppear {
+                locationManager.requestLocation()
+            }
+            .onReceive(locationManager.$location) { location in
+                if let location = location {
+                    region = MKCoordinateRegion(
+                        center: location.coordinate,
+                        span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
+                    )
+                }
+            }
+            .tabItem {
                 Image(systemName: "map")
                 Text("Map")
             }
             
+            // Camera tab button
             Text("Camera/QR reader")
                 .tabItem {
                     Image(systemName: "camera")
                     Text("Camera")
-                    
                 }
             
+            // List tab
             List(caches) { cache in
                 Text(cache.name)
             }
@@ -74,35 +98,39 @@ struct NavigationScreenView: View {
                 Image(systemName: "list.bullet")
                 Text("List")
             }
-            
-            
-                
         }
         .edgesIgnoringSafeArea(.all)
     }
     
-    
-    struct NavigationScreenView_Previews: PreviewProvider {
+    class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+        private let locationManager = CLLocationManager()
+        @Published var location: CLLocation?
+        
+        override init() {
+            super.init()
+            locationManager.delegate = self
+            locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        }
+        
+        func requestLocation() {
+            locationManager.requestWhenInUseAuthorization()
+            locationManager.requestLocation()
+        }
+        
+        func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+            location = locations.last
+        }
+        
+        func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+            print(error.localizedDescription)
+        }
+    }
+}
+
+struct NavigationScreenView_Previews:PreviewProvider {
         static var previews: some View {
             NavigationScreenView()
         }
     }
     
-    class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
-        @Published var region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 32.772364, longitude: -117.187653), span: MKCoordinateSpan(latitudeDelta: 0.001, longitudeDelta: 0.001))
-        
-        private let locationManager = CLLocationManager()
-        
-        override init() {
-            super.init()
-            self.locationManager.delegate = self
-            self.locationManager.requestWhenInUseAuthorization()
-            self.locationManager.startUpdatingLocation()
-        }
-        
-        func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-            guard let location = locations.last else { return }
-            region = MKCoordinateRegion(center: location.coordinate, span: MKCoordinateSpan(latitudeDelta: 0.001, longitudeDelta: 0.001))
-        }
-    }
-}
+    

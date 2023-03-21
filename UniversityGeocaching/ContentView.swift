@@ -91,12 +91,6 @@ struct ContentView: View {
                                 .cornerRadius(.infinity)
                             }
                             
-                            
-                            
-                            
-                            
-                            
-                            
                             NavigationLink(destination: UserSettingsView()){
                                 HStack{
                                     Image(systemName: "person.2.badge.gearshape")
